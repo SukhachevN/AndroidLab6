@@ -10,38 +10,44 @@ class JavaThreads : AppCompatActivity() {
     var secondsElapsed: Int = 0
     var work = true
     private lateinit var state: SharedPreferences
-    var backgroundThread = Thread {
-        while (work) {
-            Thread.sleep(1000)
-            textSecondsElapsed.post {
-                textSecondsElapsed.setText("Seconds elapsed: " + secondsElapsed++)
-            }
-        }
-    }
+    var backgroundThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        Log.d("test", "onCreate()")
-        backgroundThread.start()
-        state = applicationContext.getSharedPreferences("state",
-            MODE_PRIVATE)
     }
 
     override fun onResume() {
         super.onResume()
         Log.d("test", "onResume()")
-        secondsElapsed = state.getInt("seconds", 0)
+        backgroundThread = Thread {
+            while (!Thread.currentThread().isInterrupted) {
+                Thread.sleep(1000)
+                textSecondsElapsed.post {
+                    textSecondsElapsed.text = "Seconds elapsed: " + secondsElapsed++
+                }
+                if (!work) {Thread.currentThread().interrupt()}
+            }
+        }
+        backgroundThread!!.start()
         work = true
 
     }
 
     override fun onPause() {
         super.onPause()
-        Log.d("test", "onPause()")
         work = false
-        val save = state.edit()
-        save.putInt("seconds", secondsElapsed)
-        save.apply()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt("seconds", secondsElapsed)
+    }
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        secondsElapsed = savedInstanceState.getInt("seconds")
+        textSecondsElapsed.post {
+            textSecondsElapsed.text = "Seconds elapsed: " +secondsElapsed
+        }
     }
 }
